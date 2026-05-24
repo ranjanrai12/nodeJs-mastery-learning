@@ -197,9 +197,7 @@ const user = await User.findByIdAndUpdate(req.user.userId, allowedFields);
 Ans: It protects `Http/browser` level not the user identity.
 
 ### There are three algorithm in rate limit
-1. **Fixed window:** Each window has its own counter. 
-    - Count requests in a fixed time window
-    - Reset counter after window ends
+1. **Fixed window:** The fixed window algorithm tracks the number of requests in a fixed time window and resets the counter when the window expires. If the limit is exceeded, further requests are blocked until the window resets
 
     ❌ Problem:
     User can abuse boundary:
@@ -208,9 +206,9 @@ Ans: It protects `Http/browser` level not the user identity.
     + 100 requests at 3:00
     = 200 requests in seconds 😬
     ```
-2. **Sliding window:** 👉 The window is always moving (sliding) with time.
+2. **Sliding window:** 👉 A sliding window rate limiter is an algorithm that tracks the number of requests over a continuously moving time window, rather than fixed intervals.
 
-    At any moment, we only consider requests from the last X seconds
+   Sliding Window Log: Stores timestamps of each request (often in a sorted set) and removes those outside the current time window.
 
 3. **Token bucket:** Token bucket rate limiting works by assigning tokens to a bucket at a fixed refill rate. Each request consumes a token, and if no tokens are available, the request is rejected. It allows controlled bursts while maintaining an average rate over time.
 
@@ -334,4 +332,64 @@ Don’t list randomly. Always group like:
 
 ```js
 Auth → Data → Input → Network → Attacks
+```
+
+### Create your own fixed windows middleware in express, without redis.
+
+```js
+const WINDOW_SIZE = 60 * 1000; // 60 seconds
+const MAX_REQUESTS = 5;
+
+const fixedWindowRateLimiter = (req, res, next) => {
+
+    const ip = req.ip;
+
+    const currentTime = Date.now();
+
+    
+    // First request from user
+    if (!rateLimitStore[ip]) {
+
+        rateLimitStore[ip] = {
+            count: 1,
+            startTime: currentTime
+        };
+
+        return next();
+    }
+
+
+    const userData = rateLimitStore[ip];
+
+    const timePassed = currentTime - userData.startTime;
+
+
+    // Window expired → reset counter
+    if (timePassed > WINDOW_SIZE) {
+
+        rateLimitStore[ip] = {
+            count: 1,
+            startTime: currentTime
+        };
+
+        return next();
+    }
+
+
+    // Increment count
+    userData.count++;
+
+
+    // Check limit
+    if (userData.count > MAX_REQUESTS) {
+
+        return res.status(429).json({
+            success: false,
+            message: 'Too many requests'
+        });
+    }
+
+
+    next();
+};
 ```

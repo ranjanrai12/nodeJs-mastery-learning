@@ -1,8 +1,8 @@
 {
     "versio": "1.0.0",
     "scripts": {
-        "start": "node app.js",
-        "dev": "node --watch --env-file=.env app"
+        "start": "node \"$INIT_CWD/app.js\"",
+        "dev": "node --watch --env-file=.env \"$INIT_CWD/app.js\""
     },
     "dependencies": {
         "bcrypt": "^6.0.0",

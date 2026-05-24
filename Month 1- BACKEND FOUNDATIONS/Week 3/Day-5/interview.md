@@ -43,7 +43,7 @@ const cacheMiddleware = (duration) => {
 
         // replace with our interceptor, monkey patching
         res.json = function(data) {
-            redis.set(key, JSON.stringify(data), 'EX', duration)
+            redis.set(key, JSON.stringify(data), 'EX', duration) // TTL
             originalJson.call(this, data)
         }
         next()
@@ -68,7 +68,7 @@ Cache invalidation is the process of `removing or updating stale data` in the `c
 
 Avoid caching sensitive data, frequently changing data, or write operations (POST/PUT/PATCH/DELETE). Caching is best suited for read-heavy endpoints.
 
-### Q5: What happens if Redis goes down?
+### Q5: What happens if Redis goes down / crash?
 
 Ans: If the redis goes down Without handling, api will become unavailable.
 
@@ -91,6 +91,9 @@ Approach to handle it
     // fallback → DB
     const data = await fetchFromDB();
     ```
+
+    DO NOT allow full traffic ❌
+    🔥 Rate Limiting: Only allow small % of requests
 2. **Circuit Breaker (Advanced)**
 
     If Redis keeps failing → STOP calling Redis temporarily
@@ -99,6 +102,7 @@ Approach to handle it
     - repeated failures
     - unnecessary latency
 
+✅ Solution 4: Queue Buffering
 3. **Fail-Open vs Fail-Closed**
     **🔓 Fail-Open (Recommended)**
 
